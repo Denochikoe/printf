@@ -1,5 +1,13 @@
 #include "main.h"
 
+/**
+ * _printf - Custom implementation of printf function
+ * @format: Format string containing the desired text and
+ * specifiers
+ *
+ * Return: Total length of the output string
+ */
+
 int _printf(const char *format, ...)
 {
 	char buffer[BUFFER_SIZE];
@@ -8,6 +16,7 @@ int _printf(const char *format, ...)
 	const char *p;
 	int flags, width, precision, length;
 	int total_length = 0;
+	const char *str;
 
 	va_start(args, format);
 
@@ -16,7 +25,12 @@ int _printf(const char *format, ...)
 		if (*p == '%')
 		{
 			p++;
-			if (*p == '%')
+			if (*p == 'S')
+			{
+				str = va_arg(args, const char *);
+				convert_string(str, buffer, &index);
+			}
+			else if (*p == '%')
 			{
 				buffer[index++] = '%';
 			}
@@ -89,6 +103,9 @@ int _printf(const char *format, ...)
 		{
 			buffer[index++] = *p;
 		}
+
+		if (index >= BUFFER_SIZE - 1)
+			break;
 	}
 
 	buffer[index] = '\0';
