@@ -7,112 +7,88 @@
  *
  * Return: Total length of the output string
  */
-
 int _printf(const char *format, ...)
 {
-	char buffer[BUFFER_SIZE];
-	int index = 0;
-	va_list args;
-	const char *p;
-	int flags, width, precision, length;
-	int total_length = 0;
-	const char *str;
+    char buffer[BUFFER_SIZE];
+    int index = 0;
+    va_list args;
+    const char *p;
+    int total_length = 0;
 
-	va_start(args, format);
+    va_start(args, format);
 
-	for (p = format; *p; p++)
+    for (p = format; *p; p++)
+    {
+        if (*p == '%')
+        {
+            p++;
+            process_specifier(p, args, buffer, &index);
+        }
+        else
+        {
+            buffer[index++] = *p;
+        }
+
+        if (index >= BUFFER_SIZE - 1)
 	{
-		if (*p == '%')
-		{
-			p++;
-			if (*p == 'S')
-			{
-				str = va_arg(args, const char *);
-				convert_string(str, buffer, &index);
-			}
-			else if (*p == '%')
-			{
-				buffer[index++] = '%';
-			}
-			else
-			{
-				flags = 0;
-				width = 0;
-				precision = -1;
-				length = 0;
-
-				handle_flags(&p, &flags);
-				handle_width(&p, &width);
-				handle_precision(&p, &precision);
-				handle_length_modifier(&p, &length);
-
-				switch (*p)
-				{
-					case 'c':
-						convert_char(va_arg(args, int), buffer, &index);
-						break;
-					case 's':
-						convert_string(va_arg(args, char*), buffer, &index);
-						break;
-					case 'd':
-					case 'i':
-						convert_int(va_arg(args, int), flags, width, precision, buffer, &index);
-						break;
-					case 'u':
-						convert_unsigned(va_arg(args, unsigned int), 10, flags, width, precision, buffer, &index);
-						break;
-					case 'o':
-						convert_unsigned(va_arg(args, unsigned int), 8, flags, width, precision, buffer, &index);
-						break;
-					case 'x':
-						convert_unsigned(va_arg(args, unsigned int), 16, flags, width, precision, buffer, &index);
-						break;
-					case 'X':
-						convert_unsigned(va_arg(args, unsigned int), 16, flags | FLAG_UPPER, width, precision, buffer, &index);
-						break;
-					case 'p':
-						convert_pointer(va_arg(args, void*), buffer, &index);
-						break;
-					case 'b':
-						convert_binary(va_arg(args, unsigned int), buffer, &index);
-						break;
-					case 'S':
-						convert_string(va_arg(args, char*), buffer, &index);
-						break;
-					case 'r':
-						convert_reversed_string(va_arg(args, char*), buffer, &index);
-						break;
-					case 'R':
-						convert_rot13_string(va_arg(args, char*), buffer, &index);
-						break;
-					case '\\':
-						if (*(p + 1) == 'x')
-						{
-							handle_nonprintable((char)va_arg(args, int), buffer, &index);
-							p++;
-						}
-						break;
-					default:
-						buffer[index++] = '%';
-						buffer[index++] = *p;
-						break;
-				}
-			}
-		}
-		else
-		{
-			buffer[index++] = *p;
-		}
-
-		if (index >= BUFFER_SIZE - 1)
-			break;
+            write(STDOUT_FILENO, buffer, index);
+	    total_length += index;
+	    index = 0;
 	}
+    }
 
-	buffer[index] = '\0';
-	va_end(args);
-	total_length = index;
+    if (index > 0)
+    {
+	    write(STDOUT_FILENO, buffer, index);
+	    total_length += index;
+    }
+    va_end(args);
 
-	write(STDOUT_FILENO, buffer, index);
+    return total_length;
+}
 
-	return total_length;
+/**
+ * process_specifier - Handles the format specifiers
+ * @p: Pointer to the current character in the format string
+ * @args: Variable argument list
+ * @buffer: Buffer to store the output
+ * @index: Index for the buffer
+ */
+void process_specifier(const char *p, va_list args, char *buffer, int *index)
+{
+    int flags = 0, width = 0, precision = -1, length = 0;
+
+    process_format_specifiers(&p, &flags, &width, &precision
+	, &length);
+
+    if (*p == 'c' || *p == 's' || *p == 'd' || *p == 'u' || 
+		    *p == 'o' || *p == 'x' || *p == 'X' || 
+		    *p == 'p')
+    {
+	    handle_common_specifiers(p, args, buffer, index
+			    , flags, width, precision);
+    }
+    else if (*p == 'b' || *p == 'S' || *p == 'r' || *p == 'R')
+    {
+	    handle_custom_specifiers(p, args, buffer, index);
+    }
+    else if (*p == '%')
+    {
+	    buffer[(*index)++] = '%';
+    }
+    else if (*p == '\\')
+    {
+	    handle_escape_sequence(&p, args, buffer, index);
+    }
+    else
+    {
+	    handle_unknown_specifier(p, buffer, index);
+    }
+}
+
+int get_base(char specifier)
+{
+    if (specifier == 'o') return 8;
+    if (specifier == 'x' || specifier == 'X') return 16;
+    return 10;
 }

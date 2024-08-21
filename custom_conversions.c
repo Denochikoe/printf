@@ -29,103 +29,49 @@ void handle_nonprintable(char value, char *buffer, int *index)
 	}
 }
 
-/**
- * convert_reversed_string - Reverses a string and stores it in
- * the buffer.
- * @value: The string to be reversed.
- * @buffer: The buffer to store the reversed string.
- * @index: Pointer to the current index in the buffer.
- *
- * Description: This function takes a string, reverses it, and
- * stores the reversed string in the buffer. If the input
- * string is NULL, the function stores the string "(null)"
- * in the buffer.
- *
- * Return: void
- */
-void convert_reversed_string(const char *value, char *buffer, int *index)
-{
-	int i;
-	int len;
-	const char *null_str;
-
-	if (value == NULL)
-	{
-		null_str = "(null)";
-		while (*null_str)
-		{
-			buffer[(*index)++] = *null_str++;
-		}
-		return;
-	}
-
-	len = strlen(value);
-	for (i = len - 1; i >= 0; i--)
-	{
-		buffer[(*index)++] = value[i];
-	}
+void convert_string(const char *value, char *buffer, int *index) {
+    while (*value) {
+        buffer[(*index)++] = *value++;
+    }
 }
 
-/**
- * convert_rot13_string - Converts a string to ROT13 and stores
- * it in the buffer.
- * @value: The string to be converted to ROT13.
- * @buffer: The buffer to store the converted string.
- * @index: Pointer to the current index in the buffer.
- *
- * Description: This function takes a string, applies ROT13
- * encoding to it, and stores the encoded string in the buffer.
- * If the character is not an alphabetic character, it is
- * copied as-is to the buffer.
- *
- * Return: void
- */
-void convert_rot13_string(const char *value, char *buffer, int *index)
-{
-	char c;
-
-	while (*value)
-	{
-		c = *value++;
-
-		if (isalpha(c))
-		{
-			if (isupper(c))
-			{
-				buffer[(*index)++] = ((c - 'A' + 13) % 26) + 'A';
-			}
-			else
-			{
-				buffer[(*index)++] = ((c - 'a' + + 13) % 26) + 'a';
-			}
-		} else
-		{
-			buffer[(*index)++] = c;
-		}
-	}
+void handle_pointer(va_list args, char *buffer, int *index) {
+    void *ptr = va_arg(args, void *);
+    unsigned long address = (unsigned long)ptr;
+    char temp[20];
+    int len = sprintf(temp, "0x%lx", address);
+    memcpy(buffer + *index, temp, len);
+    *index += len;
 }
 
-/**
- * convert_pointer - Converts a pointer to a string and stores
- * it in the buffer.
- * @value: The pointer to be converted.
- * @buffer: The buffer to store the converted pointer string.
- * @index: Pointer to the current index in the buffer.
- *
- * Return: void
- * Description: This function converts a pointer to a string
- * representation (using the %p format) and stores the result
- * in the provided buffer.
- */
-void convert_pointer(void *value, char *buffer, int *index)
-{
-	char temp[64];
-	int i;
+void convert_binary(unsigned long value, char *buffer, int *index) {
+    char temp[65];
+    int i = 0;
+    if (value == 0) {
+        buffer[(*index)++] = '0';
+        return;
+    }
+    while (value > 0) {
+        temp[i++] = (value & 1) ? '1' : '0';
+        value >>= 1;
+    }
+    while (i > 0) {
+        buffer[(*index)++] = temp[--i];
+    }
+}
 
-	snprintf(temp, sizeof(temp), "%p", value);
-
-	for (i = 0; temp[i] != '\0'; i++)
-	{
-		buffer[(*index)++] = temp[i];
-	}
+void handle_special_string(va_list args, char *buffer, int *index) {
+    const char *str = va_arg(args, const char *);
+    while (*str) {
+        if (*str == '\n') {
+            buffer[(*index)++] = '\\';
+            buffer[(*index)++] = 'n';
+        } else if (*str == '\t') {
+            buffer[(*index)++] = '\\';
+            buffer[(*index)++] = 't';
+        } else {
+            buffer[(*index)++] = *str;
+        }
+        str++;
+    }
 }
